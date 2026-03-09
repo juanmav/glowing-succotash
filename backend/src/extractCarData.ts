@@ -3,10 +3,12 @@ import type { CarData } from './types.js';
 
 const client = new Anthropic();
 
-const SYSTEM_PROMPT = `You are a car data extraction specialist. Given the HTML of a car listing webpage, extract all available car information and return it as a JSON object.
+const SYSTEM_PROMPT = `You are a car data extraction specialist. Given the HTML of a car listing webpage, extract all available car information and return it as JSON.
 
 Rules:
-- Return ONLY a valid JSON object, no markdown, no explanations
+- Return ONLY valid JSON, no markdown, no explanations
+- If the page shows a SINGLE car listing, return a single JSON object
+- If the page shows MULTIPLE car listings (search results, inventory list, etc.), return a JSON array of objects, one per car
 - Use null for any field not found on the page
 - For numeric fields (price, mileage, year, doors), return numbers not strings
 - Normalize transmission to one of: "automatic", "manual", "cvt", "other"
@@ -23,7 +25,10 @@ Source URL: ${sourceUrl}
 HTML:
 ${html}
 
-Return a JSON object with these fields:
+If this is a single car listing, return a single JSON object.
+If this is a list/search page with multiple cars, return a JSON array of objects.
+
+Each car object should have these fields:
 {
   "vin": string|null,
   "make": string|null,
@@ -46,33 +51,7 @@ Return a JSON object with these fields:
   "description": string|null
 }`;
 
-export async function extractCarData(html: string, sourceUrl: string): Promise<CarData> {
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: 'user',
-        content: USER_PROMPT_TEMPLATE(html, sourceUrl),
-      },
-    ],
-  });
-
-  const content = message.content[0];
-  if (content.type !== 'text') {
-    throw new Error('Unexpected response type from Claude');
-  }
-
-  let parsed: Record<string, unknown>;
-  try {
-    // Strip any markdown code fences if Claude included them
-    const text = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error(`Failed to parse Claude response as JSON: ${content.text.slice(0, 200)}`);
-  }
-
+function mapParsedToCar(parsed: Record<string, unknown>, sourceUrl: string): CarData {
   return {
     vin: (parsed.vin as string | null) ?? null,
     make: (parsed.make as string | null) ?? null,
@@ -96,4 +75,38 @@ export async function extractCarData(html: string, sourceUrl: string): Promise<C
     sourceUrl,
     extractedAt: new Date().toISOString(),
   };
+}
+
+export async function extractCarData(html: string, sourceUrl: string): Promise<CarData | CarData[]> {
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 4096,
+    system: SYSTEM_PROMPT,
+    messages: [
+      {
+        role: 'user',
+        content: USER_PROMPT_TEMPLATE(html, sourceUrl),
+      },
+    ],
+  });
+
+  const content = message.content[0];
+  if (content.type !== 'text') {
+    throw new Error('Unexpected response type from Claude');
+  }
+
+  let parsed: Record<string, unknown> | Record<string, unknown>[];
+  try {
+    // Strip any markdown code fences if Claude included them
+    const text = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error(`Failed to parse Claude response as JSON: ${content.text.slice(0, 200)}`);
+  }
+
+  if (Array.isArray(parsed)) {
+    return parsed.map((item) => mapParsedToCar(item as Record<string, unknown>, sourceUrl));
+  }
+
+  return mapParsedToCar(parsed, sourceUrl);
 }

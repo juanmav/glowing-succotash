@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import type { CarData } from '../types/car.js';
 import CarForm from './components/CarForm.js';
+import CarSelector from './components/CarSelector.js';
 import StatusBar from './components/StatusBar.js';
 
-type AppState = 'idle' | 'scanning' | 'scanned' | 'pushing' | 'pushed' | 'error';
+type AppState = 'idle' | 'scanning' | 'selecting' | 'scanned' | 'pushing' | 'pushed' | 'error';
 
 interface Status {
   type: 'info' | 'success' | 'error';
@@ -37,6 +38,7 @@ const styles: Record<string, React.CSSProperties> = {
 export default function App() {
   const [state, setState] = useState<AppState>('idle');
   const [carData, setCarData] = useState<CarData | null>(null);
+  const [carList, setCarList] = useState<CarData[]>([]);
   const [status, setStatus] = useState<Status | null>(null);
 
   const openOptions = useCallback(() => {
@@ -47,6 +49,7 @@ export default function App() {
     setState('scanning');
     setStatus({ type: 'info', message: 'Sending page to Claude for extraction...' });
     setCarData(null);
+    setCarList([]);
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -63,13 +66,26 @@ export default function App() {
         throw new Error(response.error ?? 'Extraction failed');
       }
 
-      setCarData(response.data);
-      setState('scanned');
-      setStatus({ type: 'success', message: 'Car data extracted. Review and push when ready.' });
+      if (Array.isArray(response.data)) {
+        setCarList(response.data);
+        setState('selecting');
+        setStatus({ type: 'info', message: `${response.data.length} cars found. Select one to continue.` });
+      } else {
+        setCarData(response.data);
+        setState('scanned');
+        setStatus({ type: 'success', message: 'Car data extracted. Review and push when ready.' });
+      }
     } catch (err) {
       setState('error');
       setStatus({ type: 'error', message: err instanceof Error ? err.message : String(err) });
     }
+  }, []);
+
+  const handleSelectCar = useCallback((car: CarData) => {
+    setCarData(car);
+    setCarList([]);
+    setState('scanned');
+    setStatus({ type: 'success', message: 'Car selected. Review and push when ready.' });
   }, []);
 
   const handlePush = useCallback(async () => {
@@ -97,8 +113,9 @@ export default function App() {
 
   const scanning = state === 'scanning';
   const pushing = state === 'pushing';
+  const selecting = state === 'selecting';
   const canPush = (state === 'scanned' || state === 'error') && carData !== null;
-  const canScan = !scanning && !pushing;
+  const canScan = !scanning && !pushing && !selecting;
 
   return (
     <div style={styles.container}>
@@ -117,7 +134,9 @@ export default function App() {
       {status && <StatusBar type={status.type} message={status.message} />}
 
       {/* Content */}
-      {carData ? (
+      {selecting ? (
+        <CarSelector cars={carList} onSelect={handleSelectCar} />
+      ) : carData ? (
         <CarForm data={carData} onChange={setCarData} />
       ) : (
         <div style={styles.empty}>
@@ -140,7 +159,7 @@ export default function App() {
           onClick={handleScan}
           disabled={!canScan}
         >
-          {scanning ? 'Scanning...' : 'Scan Page'}
+          {scanning ? 'Scanning...' : selecting ? 'Select a car...' : 'Scan Page'}
         </button>
 
         {canPush && (

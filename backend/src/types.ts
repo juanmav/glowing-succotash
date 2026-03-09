@@ -29,7 +29,7 @@ export interface ExtractRequest {
 
 export interface ExtractResponse {
   success: true;
-  data: CarData;
+  data: CarData | CarData[];
 }
 
 export interface ExtractErrorResponse {
