@@ -107,10 +107,15 @@ export default function App() {
 
   const handleSelectCar = useCallback((car: CarData) => {
     setCarData(car);
-    setCarList([]);
     setState('scanned');
     setStatus({ type: 'success', message: 'Car selected. Review and push when ready.' });
   }, []);
+
+  const handleBackToList = useCallback(() => {
+    setCarData(null);
+    setState('selecting');
+    setStatus({ type: 'info', message: `${carList.length} cars found. Select one to continue.` });
+  }, [carList.length]);
 
   const handlePush = useCallback(async () => {
     if (!carData) return;
@@ -161,7 +166,7 @@ export default function App() {
       {selecting ? (
         <CarSelector cars={carList} onSelect={handleSelectCar} />
       ) : carData ? (
-        <CarForm data={carData} onChange={setCarData} />
+        <CarForm data={carData} onChange={setCarData} onBack={carList.length > 0 ? handleBackToList : undefined} />
       ) : (
         <div style={styles.empty}>
           <div style={styles.emptyIcon}>🚗</div>

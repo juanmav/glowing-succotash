@@ -4,13 +4,14 @@ import FieldRow from './FieldRow.js';
 interface Props {
   data: CarData;
   onChange: (updated: CarData) => void;
+  onBack?: () => void;
 }
 
 function set<K extends keyof CarData>(data: CarData, key: K, value: CarData[K]): CarData {
   return { ...data, [key]: value };
 }
 
-export default function CarForm({ data, onChange }: Props) {
+export default function CarForm({ data, onChange, onBack }: Props) {
   const update = (key: keyof CarData, raw: string) => {
     const numericFields: (keyof CarData)[] = ['year', 'price', 'mileage', 'doors'];
     if (numericFields.includes(key)) {
@@ -23,6 +24,18 @@ export default function CarForm({ data, onChange }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', maxHeight: 420 }}>
+      {onBack && (
+        <button
+          onClick={onBack}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 12, color: '#6b7280', padding: '0 0 4px 0',
+            textAlign: 'left', alignSelf: 'flex-start',
+          }}
+        >
+          ← Back to list
+        </button>
+      )}
       <FieldRow label="VIN"          value={data.vin}           onChange={(v) => update('vin', v)} monospace />
       <FieldRow label="Make"         value={data.make}          onChange={(v) => update('make', v)} />
       <FieldRow label="Model"        value={data.model}         onChange={(v) => update('model', v)} />
