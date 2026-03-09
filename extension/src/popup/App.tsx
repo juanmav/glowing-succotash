@@ -166,7 +166,7 @@ export default function App() {
       {selecting ? (
         <CarSelector cars={carList} onSelect={handleSelectCar} />
       ) : carData ? (
-        <CarForm data={carData} onChange={setCarData} onBack={carList.length > 0 ? handleBackToList : undefined} />
+        <CarForm data={carData} onChange={setCarData} />
       ) : (
         <div style={styles.empty}>
           <div style={styles.emptyIcon}>🚗</div>
@@ -179,6 +179,11 @@ export default function App() {
 
       {/* Actions */}
       <div style={styles.actions}>
+        {carList.length > 0 && state === 'scanned' && (
+          <button style={{ ...styles.optionsLink, marginRight: 'auto' }} onClick={handleBackToList}>
+            ← Back to list
+          </button>
+        )}
         <button
           style={{
             ...styles.btn,
