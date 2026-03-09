@@ -179,7 +179,7 @@ export default function App() {
 
       {/* Actions */}
       <div style={styles.actions}>
-        {carList.length > 0 && state === 'scanned' && (
+        {carList.length > 0 && (state === 'scanned' || state === 'error') && (
           <button style={{ ...styles.optionsLink, marginRight: 'auto' }} onClick={handleBackToList}>
             ← Back to list
           </button>
