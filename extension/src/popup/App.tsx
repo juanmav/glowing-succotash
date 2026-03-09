@@ -24,6 +24,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600, fontSize: 13, transition: 'opacity .15s',
   },
   btnPrimary: { background: '#2563eb', color: '#fff' },
+  btnSecondary: { background: '#6b7280', color: '#fff' },
   btnSuccess: { background: '#16a34a', color: '#fff' },
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   optionsLink: {
@@ -107,10 +108,15 @@ export default function App() {
 
   const handleSelectCar = useCallback((car: CarData) => {
     setCarData(car);
-    setCarList([]);
     setState('scanned');
     setStatus({ type: 'success', message: 'Car selected. Review and push when ready.' });
   }, []);
+
+  const handleBackToList = useCallback(() => {
+    setCarData(null);
+    setState('selecting');
+    setStatus({ type: 'info', message: `${carList.length} cars found. Select one to continue.` });
+  }, [carList.length]);
 
   const handlePush = useCallback(async () => {
     if (!carData) return;
@@ -174,6 +180,15 @@ export default function App() {
 
       {/* Actions */}
       <div style={styles.actions}>
+        {carList.length > 0 && (state === 'scanned' || state === 'error') && (
+          <button style={{
+            ...styles.btn,
+            ...styles.btnSecondary,
+            marginRight: 'auto'
+          }} onClick={handleBackToList}>
+            ← Back to list
+          </button>
+        )}
         <button
           style={{
             ...styles.btn,
