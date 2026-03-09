@@ -1,5 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CarData } from '../types/car.js';
+import { getPopupState, savePopupState } from '../utils/storage.js';
+import type { PersistedPopupState } from '../utils/storage.js';
 import CarForm from './components/CarForm.js';
 import CarSelector from './components/CarSelector.js';
 import StatusBar from './components/StatusBar.js';
@@ -40,6 +42,28 @@ export default function App() {
   const [carData, setCarData] = useState<CarData | null>(null);
   const [carList, setCarList] = useState<CarData[]>([]);
   const [status, setStatus] = useState<Status | null>(null);
+
+  useEffect(() => {
+    getPopupState().then((persisted) => {
+      if (!persisted) return;
+      setState(persisted.state);
+      setCarData(persisted.carData);
+      setCarList(persisted.carList);
+      setStatus(persisted.status);
+    });
+  }, []);
+
+  useEffect(() => {
+    const persistedAppState: PersistedPopupState['state'] =
+      (state === 'scanning' || state === 'pushing') ? 'idle' : state;
+
+    savePopupState({
+      state: persistedAppState,
+      carData,
+      carList,
+      status,
+    });
+  }, [state, carData, carList, status]);
 
   const openOptions = useCallback(() => {
     chrome.runtime.openOptionsPage();
