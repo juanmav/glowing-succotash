@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import type { CarData } from '../types/car.js';
 import CarForm from './components/CarForm.js';
+import CarList from './components/CarList.js';
 import StatusBar from './components/StatusBar.js';
 
-type AppState = 'idle' | 'scanning' | 'scanned' | 'pushing' | 'pushed' | 'error';
+type AppState = 'idle' | 'scanning' | 'selecting' | 'scanned' | 'pushing' | 'pushed' | 'error';
 
 interface Status {
   type: 'info' | 'success' | 'error';
@@ -22,9 +23,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   btnPrimary: { background: '#2563eb', color: '#fff' },
   btnSuccess: { background: '#16a34a', color: '#fff' },
+  btnSecondary: { background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db' },
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
   optionsLink: {
-    fontSize: 11, color: '#6b7280', textDecoration: 'none', cursor: 'pointer',
+    fontSize: 11, color: '#6b7280', cursor: 'pointer',
     background: 'none', border: 'none', padding: 0,
   },
   empty: {
@@ -36,41 +38,57 @@ const styles: Record<string, React.CSSProperties> = {
 
 export default function App() {
   const [state, setState] = useState<AppState>('idle');
+  const [candidates, setCandidates] = useState<CarData[]>([]);
   const [carData, setCarData] = useState<CarData | null>(null);
   const [status, setStatus] = useState<Status | null>(null);
 
-  const openOptions = useCallback(() => {
-    chrome.runtime.openOptionsPage();
-  }, []);
+  const openOptions = useCallback(() => chrome.runtime.openOptionsPage(), []);
 
   const handleScan = useCallback(async () => {
     setState('scanning');
     setStatus({ type: 'info', message: 'Sending page to Claude for extraction...' });
     setCarData(null);
+    setCandidates([]);
 
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) {
-        throw new Error('No active tab found');
+      if (!tab?.id) throw new Error('No active tab found');
+
+      const response = await chrome.runtime.sendMessage({ type: 'SCAN_PAGE', tabId: tab.id });
+
+      if (!response.success) throw new Error(response.error ?? 'Extraction failed');
+
+      const results: CarData[] = response.data;
+
+      if (results.length === 1) {
+        // Single car — go straight to the edit form
+        setCarData(results[0]);
+        setState('scanned');
+        setStatus({ type: 'success', message: 'Car data extracted. Review and push when ready.' });
+      } else {
+        // Multiple cars — let the user pick
+        setCandidates(results);
+        setState('selecting');
+        setStatus({ type: 'info', message: `${results.length} cars found. Select one to review.` });
       }
-
-      const response = await chrome.runtime.sendMessage({
-        type: 'SCAN_PAGE',
-        tabId: tab.id,
-      });
-
-      if (!response.success) {
-        throw new Error(response.error ?? 'Extraction failed');
-      }
-
-      setCarData(response.data);
-      setState('scanned');
-      setStatus({ type: 'success', message: 'Car data extracted. Review and push when ready.' });
     } catch (err) {
       setState('error');
       setStatus({ type: 'error', message: err instanceof Error ? err.message : String(err) });
     }
   }, []);
+
+  const handleSelect = useCallback((car: CarData) => {
+    setCarData(car);
+    setCandidates((prev) => prev);
+    setState('scanned');
+    setStatus({ type: 'success', message: 'Car selected. Review and push when ready.' });
+  }, []);
+
+  const handleBackToList = useCallback(() => {
+    setCarData(null);
+    setState('selecting');
+    setStatus({ type: 'info', message: `${candidates.length} cars found. Select one to review.` });
+  }, [candidates.length]);
 
   const handlePush = useCallback(async () => {
     if (!carData) return;
@@ -78,14 +96,9 @@ export default function App() {
     setStatus({ type: 'info', message: 'Pushing to API...' });
 
     try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'PUSH_DATA',
-        data: carData,
-      });
+      const response = await chrome.runtime.sendMessage({ type: 'PUSH_DATA', data: carData });
 
-      if (!response.success) {
-        throw new Error(response.error ?? 'Push failed');
-      }
+      if (!response.success) throw new Error(response.error ?? 'Push failed');
 
       setState('pushed');
       setStatus({ type: 'success', message: `Pushed successfully (HTTP ${response.statusCode})` });
@@ -99,6 +112,8 @@ export default function App() {
   const pushing = state === 'pushing';
   const canPush = (state === 'scanned' || state === 'error') && carData !== null;
   const canScan = !scanning && !pushing;
+  const showBackToList = ['scanned', 'pushing', 'pushed', 'error'].includes(state)
+    && carData !== null && candidates.length > 0;
 
   return (
     <div style={styles.container}>
@@ -108,48 +123,42 @@ export default function App() {
           <div style={styles.title}>Car Data Scraper</div>
           <div style={styles.subtitle}>Powered by Claude AI</div>
         </div>
-        <button style={styles.optionsLink} onClick={openOptions}>
-          Settings
-        </button>
+        <button style={styles.optionsLink} onClick={openOptions}>Settings</button>
       </div>
 
       {/* Status */}
       {status && <StatusBar type={status.type} message={status.message} />}
 
       {/* Content */}
-      {carData ? (
+      {state === 'selecting' && candidates.length > 0 ? (
+        <CarList cars={candidates} onSelect={handleSelect} />
+      ) : carData ? (
         <CarForm data={carData} onChange={setCarData} />
       ) : (
         <div style={styles.empty}>
           <div style={styles.emptyIcon}>🚗</div>
           <div style={{ fontWeight: 600, color: '#374151' }}>No car data yet</div>
-          <div style={{ fontSize: 12 }}>
-            Navigate to a car listing page and click "Scan Page"
-          </div>
+          <div style={{ fontSize: 12 }}>Navigate to a car listing page and click "Scan Page"</div>
         </div>
       )}
 
       {/* Actions */}
       <div style={styles.actions}>
+        {showBackToList && (
+          <button style={{ ...styles.btn, ...styles.btnSecondary }} onClick={handleBackToList}>
+            ← Back to list
+          </button>
+        )}
         <button
-          style={{
-            ...styles.btn,
-            ...styles.btnPrimary,
-            ...(canScan ? {} : styles.btnDisabled),
-          }}
+          style={{ ...styles.btn, ...styles.btnPrimary, ...(canScan ? {} : styles.btnDisabled) }}
           onClick={handleScan}
           disabled={!canScan}
         >
           {scanning ? 'Scanning...' : 'Scan Page'}
         </button>
-
         {canPush && (
           <button
-            style={{
-              ...styles.btn,
-              ...styles.btnSuccess,
-              ...(pushing ? styles.btnDisabled : {}),
-            }}
+            style={{ ...styles.btn, ...styles.btnSuccess, ...(pushing ? styles.btnDisabled : {}) }}
             onClick={handlePush}
             disabled={pushing}
           >

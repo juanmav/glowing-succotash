@@ -7,7 +7,7 @@ export type MessageToBackground =
 export type MessageToContent = { type: 'CAPTURE_HTML' };
 
 export type BackgroundResponse =
-  | { success: true; data: CarData }
+  | { success: true; data: CarData[] }
   | { success: false; error: string };
 
 export type PushResponse =
