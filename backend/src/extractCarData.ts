@@ -80,7 +80,7 @@ function mapParsedToCar(parsed: Record<string, unknown>, sourceUrl: string): Car
 export async function extractCarData(html: string, sourceUrl: string): Promise<CarData | CarData[]> {
   const message = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 4096,
+    max_tokens: 8192,
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -101,7 +101,7 @@ export async function extractCarData(html: string, sourceUrl: string): Promise<C
     const text = content.text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
     parsed = JSON.parse(text);
   } catch {
-    throw new Error(`Failed to parse Claude response as JSON: ${content.text.slice(0, 200)}`);
+    throw new Error(`Failed to parse Claude response as JSON: ${content.text}`);
   }
 
   if (Array.isArray(parsed)) {
