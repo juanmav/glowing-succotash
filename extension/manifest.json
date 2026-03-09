@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Car Data Scraper",
+  "version": "1.0.0",
+  "description": "Detect car listing data on any page, review it, and push to your API.",
+
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "options_ui": {
+    "page": "options/index.html",
+    "open_in_tab": true
+  },
+
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+
+  "permissions": ["activeTab", "scripting", "storage"],
+
+  "host_permissions": ["<all_urls>"]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "glowing-succotash",
+  "version": "1.0.0",
+  "description": "Car Data Scraper — Chrome extension + backend",
+  "private": true,
+  "workspaces": ["backend", "extension"],
+  "scripts": {
+    "build": "npm run build --workspace=backend && npm run build --workspace=extension",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:extension": "npm run dev --workspace=extension",
+    "generate-icons": "node scripts/generate-icons.js"
+  }
+}
