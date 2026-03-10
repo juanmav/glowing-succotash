@@ -36,3 +36,25 @@ export interface ExtractErrorResponse {
   success: false;
   error: string;
 }
+
+export interface FormFillCommand {
+  action: 'fill' | 'select' | 'click' | 'check';
+  selector: string;
+  value?: string;
+}
+
+export interface FillLoanFormRequest {
+  car: CarData;
+  html: string;
+  sourceUrl: string;
+}
+
+export interface FillLoanFormResponse {
+  success: true;
+  commands: FormFillCommand[];
+}
+
+export interface CarsListResponse {
+  success: true;
+  data: CarData[];
+}
