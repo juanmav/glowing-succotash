@@ -18,9 +18,11 @@ export async function saveConfig(config: Partial<StorageConfig>): Promise<void> 
 const POPUP_STATE_KEY = 'popupState';
 
 export interface PersistedPopupState {
-  state: 'idle' | 'selecting' | 'scanned' | 'pushed' | 'error';
+  state: 'idle' | 'selecting' | 'scanned' | 'pushed' | 'error' | 'selectingLoanCar' | 'loanCarSelected' | 'loanCompleted';
   carData: CarData | null;
   carList: CarData[];
+  loanCars: CarData[];
+  selectedLoanCar: CarData | null;
   status: { type: 'info' | 'success' | 'error'; message: string } | null;
 }
 
