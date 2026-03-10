@@ -58,6 +58,8 @@ glowing-succotash/
 │   ├── src/
 │   │   ├── index.ts        # HTTP server (POST /extract, GET /health)
 │   │   ├── extractCarData.ts  # Claude API integration
+│   │   ├── fillLoanForm.ts # Claude API call for loan form commands
+│   │   ├── carRepository.ts # Sample car inventory
 │   │   └── types.ts        # Shared TypeScript types
 │   ├── package.json
 │   ├── tsconfig.json
@@ -77,6 +79,9 @@ glowing-succotash/
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── vite.config.ts
+├── mock-loan-site/         # Mock bank loan page for testing
+│   ├── index.html          # Loan application form
+│   └── package.json
 └── scripts/
     └── generate-icons.js   # Generates placeholder PNG icons
 ```
@@ -114,7 +119,20 @@ Load the extension in Chrome:
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked** → select the `extension/dist/` folder
 
-### 3. Configure the Extension
+### 3. Mock Loan Site (for testing)
+
+```bash
+# From the root directory:
+npm run dev:mock-loan
+
+# Or directly:
+cd mock-loan-site
+npx serve -l 8080 .
+```
+
+Opens at `http://localhost:8080`. Navigate to this page in Chrome, then use the extension's **"Complete loan details"** flow to auto-fill the loan form with car data from the backend inventory.
+
+### 4. Configure the Extension
 
 1. Click the extension icon in Chrome → **Settings** (top right of popup)
 2. Set **Backend URL**: `http://localhost:3000` (or your deployed backend URL)

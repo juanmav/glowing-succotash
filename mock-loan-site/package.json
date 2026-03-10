@@ -1,0 +1,10 @@
+{
+  "name": "mock-loan-site",
+  "version": "1.0.0",
+  "description": "Mock bank loan application page for testing the Chrome extension",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve -l 8080 .",
+    "start": "npx serve -l 8080 ."
+  }
+}
